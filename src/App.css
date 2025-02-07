@@ -909,3 +909,152 @@ small {
 html {
   scroll-behavior: smooth;
 }
+
+.migration-progress {
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.progress-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 10px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9em;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #333;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--primary-color, #007bff);
+  transition: width 0.3s ease;
+}
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* Changed from 3 to 4 columns */
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+}
+
+.mapping-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.foreign-key-info {
+  background-color: #e8f4ff;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #0066cc;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.cancel-btn, .confirm-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.confirm-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.confirm-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.reference-info {
+  display: block;
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+  margin-top: 2px;
+}

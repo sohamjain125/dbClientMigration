@@ -1,0 +1,270 @@
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary-color: #64748b;
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --background-color: #f8fafc;
+    --card-background: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+  }
+  
+  .modern-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: var(--background-color);
+    min-height: 100vh;
+  }
+  
+  .modern-header {
+    background: var(--card-background);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    margin-bottom: 2rem;
+  }
+  
+  .header-content {
+    text-align: center;
+  }
+  
+  .header-content h1 {
+    color: var(--text-primary);
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+  }
+  
+  /* Stepper */
+  .stepper {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 1rem;
+  }
+  
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    flex: 1;
+  }
+  
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    width: calc(100% - 2rem);
+    height: 2px;
+    background: var(--border-color);
+    top: 1rem;
+    z-index: 0;
+  }
+  
+  .step-number {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 1;
+  }
+  
+  .step.active .step-number {
+    background: var(--primary-color);
+  }
+  
+  .step.completed .step-number {
+    background: var(--success-color);
+  }
+  
+  /* Cards */
+  .modern-card {
+    background: var(--card-background);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  
+  .card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .card-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  /* Form Elements */
+  .modern-form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .modern-form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  
+  .select-wrapper {
+    position: relative;
+  }
+  
+  .modern-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background);
+    color: var(--text-primary);
+    appearance: none;
+    cursor: pointer;
+  }
+  
+  .modern-select.multiple {
+    min-height: 150px;
+  }
+  
+  /* Upload Zone */
+  .modern-upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+  
+  .modern-upload-zone:hover {
+    border-color: var(--primary-color);
+  }
+  
+  .upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .upload-content i {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+  }
+  
+  .file-types {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+  }
+  
+  /* Buttons */
+  .modern-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .modern-button.primary {
+    background: var(--primary-color);
+    color: white;
+  }
+  
+  .modern-button.primary:hover {
+    background: var(--primary-hover);
+  }
+  
+  .modern-button.secondary {
+    background: var(--secondary-color);
+    color: white;
+  }
+  
+  /* Status Messages */
+  .modern-status {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: white;
+    animation: slideIn 0.3s ease;
+  }
+  
+  .modern-status.success {
+    background: var(--success-color);
+  }
+  
+  .modern-status.warning {
+    background: var(--warning-color);
+  }
+  
+  .modern-status.error {
+    background: var(--error-color);
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  /* Badges */
+  .required-badge {
+    background: var(--error-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+  }
+  
+  .optional-badge {
+    background: var(--secondary-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+  }

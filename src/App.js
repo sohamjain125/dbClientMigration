@@ -12,16 +12,25 @@ function App() {
   const [tables, setTables] = useState([]);
   const [tableColumns, setTableColumns] = useState([]);
   const [sourceTypes, setSourceTypes] = useState({});
-  // const [selectedTables, setSelectedTables] = useState([]);
+  const [referenceData, setReferenceData] = useState({});
+  const [columnMetadata, setColumnMetadata] = useState({});
   const [additionalTables, setAdditionalTables] = useState([]);
   const [additionalMappings, setAdditionalMappings] = useState({});
+  const [showMappingModal, setShowMappingModal] = useState(false);
+const [selectedSqlColumn, setSelectedSqlColumn] = useState('');
+const [selectedFileColumn, setSelectedFileColumn] = useState('');
   const [data, setData] = useState([]);
+  const [additionalTableColumns, setAdditionalTableColumns] = useState({});
+  const [migrationProgress, setMigrationProgress] = useState({
+    total: 0,
+    processed: 0,
+    skipped: 0,  // Add this to track duplicates
+    failed: 0,
+    status: 'idle'
+  });
+  
+  
 
-
-
-  const [selectedTables, setSelectedTables] = useState([]);
-    // const [mappings, setMappings] = useState({}); 
-  // const [mappings, setMappings] = useState({});
 
   const [customMappings, setCustomMappings] = useState([]);
 const [showCustomMappingModal, setShowCustomMappingModal] = useState(false);
@@ -199,8 +208,106 @@ useEffect(() => {
       </div>
   );
 };
+const MigrationProgress = ({ progress }) => {
+  const getStatusColor = () => {
+    switch (progress.status) {
+      case 'completed': return 'var(--success-color, #28a745)';
+      case 'failed': return 'var(--error-color, #dc3545)';
+      case 'in-progress': return 'var(--primary-color, #007bff)';
+      default: return 'var(--text-color, #666)';
+    }
+  };
+
+  if (progress.status === 'idle') return null;
+
+  return (
+    <div className="migration-progress">
+      <div className="progress-header">
+        <h3>Migration Progress</h3>
+        <span className="status-badge" style={{ backgroundColor: getStatusColor() }}>
+          {progress.status.charAt(0).toUpperCase() + progress.status.slice(1)}
+        </span>
+      </div>
+      
+      <div className="progress-stats">
+        <div className="stat-item">
+          <span className="stat-label">Total Records</span>
+          <span className="stat-value">{progress.total}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Processed</span>
+          <span className="stat-value">{progress.processed}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Skipped (Duplicates)</span>
+          <span className="stat-value">{progress.skipped}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">Failed</span>
+          <span className="stat-value">{progress.failed}</span>
+        </div>
+      </div>
+
+      {progress.status === 'in-progress' && (
+        <div className="progress-bar-container">
+          <div 
+            className="progress-bar" 
+            style={{ 
+              width: `${(progress.processed / progress.total) * 100}%`
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ReferenceFieldMapping = ({ column, value, onChange }) => {
+  if (column.isForeignKey) {
+      return (
+          <div className="mapping-item">
+              <div className="mapping-content">
+                  <span className="source-col">
+                      <select 
+                          value={value || ''} 
+                          onChange={(e) => onChange(column.name, e.target.value)}
+                          className="select-input"
+                      >
+                          <option value="">Select source column</option>
+                          {fileHeaders.map(header => (
+                              <option key={header} value={header}>
+                                  {header}
+                              </option>
+                          ))}
+                      </select>
+                  </span>
+                  <i className="fas fa-arrow-right"></i>
+                  <span className="target-col">
+                      {column.name}
+                      <small className="reference-info">
+                          (Links to {column.referencedTable})
+                      </small>
+                  </span>
+              </div>
+          </div>
+      );
+  }
+  return null;
+};
 
 
+
+const fetchReferenceData = async (tableName) => {
+  try {
+      const response = await axios.get(`http://localhost:5000/api/reference/${tableName}`);
+      setReferenceData(prev => ({
+          ...prev,
+          [tableName]: response.data
+      }));
+  } catch (error) {
+      setStatus(`Error fetching reference data: ${error.message}`);
+  }
+};
 
 
   useEffect(() => {
@@ -442,28 +549,7 @@ useEffect(() => {
     return compatibilityRules[sourceType]?.includes(destType) || false;
 };
 
-const processCustomMapping = (data, mapping) => {
-  if (mapping.type === 'concat') {
-      // Combine multiple columns
-      const combinedValue = mapping.sourceFields
-          .map(field => data[field])
-          .join(' ').trim();
-      return {
-          [mapping.destinationField]: combinedValue
-      };
-  } else if (mapping.type === 'split') {
-      // Split a column into multiple parts
-      const parts = data[mapping.sourceFields[0]].split(' ');
-      const result = {};
-      if (Array.isArray(mapping.destinationField)) {
-          mapping.destinationField.forEach((field, index) => {
-              result[field] = parts[index] || '';
-          });
-      }
-      return result;
-  }
-  return {};
-};
+
 
   const handleAddAdditionalMapping = (tableName) => {
     const sqlColumn = prompt('Enter SQL column name:');
@@ -517,49 +603,120 @@ const processCustomMapping = (data, mapping) => {
       return [];
     }
   };
-  const handleAdditionalTablesChange = async (e) => {
-    const selected = Array.from(e.target.selectedOptions, option => option.value);
-    setAdditionalTables(selected);
+const handleAdditionalTablesChange = async (e) => {
+  const selected = Array.from(e.target.selectedOptions, option => option.value);
+  setAdditionalTables(selected);
 
-    // Clear mappings for unselected tables
-    setAdditionalMappings(prev => {
-      const newMappings = {};
-      selected.forEach(table => {
-        if (prev[table]) {
-          newMappings[table] = prev[table];
-        }
-      });
-      return newMappings;
-    });
-  };
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-        setStatus('Starting migration...');
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('tableName', tableName);
-        formData.append('mappings', JSON.stringify(mappings));
-        formData.append('customMappings', JSON.stringify(customMappings));
+  // Fetch columns for newly selected tables
+  for (const table of selected) {
+    if (!additionalTableColumns[table]) {
+      try {
+        const columns = await fetchAdditionalTableColumns(table);
+        setAdditionalTableColumns(prev => ({
+          ...prev,
+          [table]: columns
+        }));
 
-        const response = await axios.post('http://localhost:5000/api/migrate', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
+        // Auto-map columns for newly added table
+        if (fileHeaders.length > 0) {
+          const autoMappings = {};
+          columns.forEach(tableCol => {
+            const match = fileHeaders.find(
+              fileCol => fileCol.toLowerCase() === tableCol.name.toLowerCase()
+            );
+            if (match) {
+              autoMappings[tableCol.name] = match;
             }
-        });
+          });
 
-        // Use the response
-        if (response.data.success) {
-            setStatus('Migration completed successfully!');
-        } else {
-            setStatus(`Error: ${response.data.error || 'Unknown error occurred'}`);
+          if (Object.keys(autoMappings).length > 0) {
+            setAdditionalMappings(prev => ({
+              ...prev,
+              [table]: autoMappings
+            }));
+          }
         }
-    } catch (error) {
-        setStatus(`Error: ${error.response?.data?.error || error.message}`);
-        console.error('Full error:', error);
+      } catch (error) {
+        setStatus(`Error fetching columns for ${table}: ${error.message}`);
+      }
     }
+  }
+  setAdditionalMappings(prev => {
+    const newMappings = {};
+    selected.forEach(table => {
+      if (prev[table]) {
+        newMappings[table] = prev[table];
+      }
+    });
+    return newMappings;
+  });
+
+  // Clean up stored columns for unselected tables
+  setAdditionalTableColumns(prev => {
+    const newColumns = {};
+    selected.forEach(table => {
+      if (prev[table]) {
+        newColumns[table] = prev[table];
+      }
+    });
+    return newColumns;
+  });
 };
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    setMigrationProgress({
+      total: 0,
+      processed: 0,
+      skipped: 0,
+      failed: 0,
+      status: 'in-progress'
+    });
+    setStatus('Starting migration...');
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('tableName', tableName);
+    formData.append('mappings', JSON.stringify(mappings));
+    formData.append('customMappings', JSON.stringify(customMappings));
+    formData.append('additionalTables', JSON.stringify(additionalTables));
+    formData.append('additionalMappings', JSON.stringify(additionalMappings));
+
+    // Set up progress tracking
+    const response = await axios.post('http://localhost:5000/api/migrate', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setStatus(`Uploading file: ${percentCompleted}%`);
+      }
+    });
+
+    if (response.data.success) {
+      setMigrationProgress({
+        total: response.data.totalRecords || 0,
+        processed: response.data.processedRecords || 0,
+        skipped: response.data.skippedRecords || 0,
+        failed: response.data.failedRecords || 0,
+        status: 'completed'
+      });
+      setStatus('Migration completed successfully!');
+    } else {
+      setMigrationProgress(prev => ({ ...prev, status: 'failed' }));
+      setStatus(`Error: ${response.data.error || 'Unknown error occurred'}`);
+    }
+  } catch (error) {
+    setMigrationProgress(prev => ({ ...prev, status: 'failed' }));
+    setStatus(`Error: ${error.response?.data?.error || error.message}`);
+    console.error('Full error:', error);
+  }
+};
+
+
+
+
   return (
     <div className="container">
       <header className="header">
@@ -764,7 +921,7 @@ const processCustomMapping = (data, mapping) => {
               </div>
 
               {/* Primary Table Mapping */}
-              {tableColumns.length > 0 && (
+              {/* {tableColumns.length > 0 && (
                 <div className="mapping-section">
                   <h3>
                     <i className="fas fa-random"></i>
@@ -809,7 +966,125 @@ const processCustomMapping = (data, mapping) => {
                     </button>
                   </div>
                 </div>
-              )}
+              )} */}
+
+
+              {/* Primary Table Mapping */}
+{tableColumns.length > 0 && (
+    <div className="mapping-section">
+        <h3>
+            <i className="fas fa-random"></i>
+            Primary Table Mapping ({tableName})
+        </h3>
+        <div className="auto-map-info">
+            <i className="fas fa-magic"></i>
+            Auto-mapped columns are automatically matched based on names
+        </div>
+        <div className="mappings">
+            {Object.entries(mappings).map(([sqlCol, fileCol]) => (
+                <div key={sqlCol} className="mapping-item">
+                    <div className="mapping-content">
+                        <span className="source-col">{fileCol}</span>
+                        <i className="fas fa-arrow-right"></i>
+                        <span className="target-col">
+                            {sqlCol}
+                            {columnMetadata[sqlCol]?.isForeignKey && (
+                                <small className="reference-info">
+                                    Links to {columnMetadata[sqlCol].referencedTable}
+                                </small>
+                            )}
+                        </span>
+                    </div>
+                    <div className="mapping-actions">
+                        <button
+                            type="button"
+                            onClick={() => handleUpdateMapping(sqlCol)}
+                            className="action-button edit"
+                        >
+                            <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDeleteMapping(sqlCol)}
+                            className="action-button delete"
+                        >
+                            <i className="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            ))}
+            <button
+                type="button"
+                onClick={() => setShowMappingModal(true)}
+                className="add-mapping-btn"
+            >
+                <i className="fas fa-plus"></i> Add Column Mapping
+            </button>
+        </div>
+    </div>
+)}
+
+{/* Mapping Modal */}
+{showMappingModal && (
+    <div className="modal">
+        <div className="modal-content">
+            <h3>Add Column Mapping</h3>
+            <div className="mapping-form">
+                <select
+                    value={selectedSqlColumn}
+                    onChange={(e) => setSelectedSqlColumn(e.target.value)}
+                    className="select-input"
+                >
+                    <option value="">Select Target Column</option>
+                    {tableColumns.map(column => (
+                        <option key={column.name} value={column.name}>
+                            {column.name}
+                            {columnMetadata[column.name]?.isForeignKey ? 
+                                ` (Links to ${columnMetadata[column.name].referencedTable})` : 
+                                ''}
+                        </option>
+                    ))}
+                </select>
+                <select
+                    value={selectedFileColumn}
+                    onChange={(e) => setSelectedFileColumn(e.target.value)}
+                    className="select-input"
+                >
+                    <option value="">Select Source Column</option>
+                    {fileHeaders.map(header => (
+                        <option key={header} value={header}>{header}</option>
+                    ))}
+                </select>
+                {columnMetadata[selectedSqlColumn]?.isForeignKey && (
+                    <div className="foreign-key-info">
+                        <i className="fas fa-info-circle"></i>
+                        This column references {columnMetadata[selectedSqlColumn].referencedTable}.
+                        Make sure your source data matches the reference values.
+                    </div>
+                )}
+            </div>
+            <div className="modal-actions">
+                <button onClick={() => setShowMappingModal(false)} className="cancel-btn">
+                    Cancel
+                </button>
+                <button 
+                    onClick={() => {
+                        if (selectedSqlColumn && selectedFileColumn) {
+                            handleUpdateMapping(selectedSqlColumn, selectedFileColumn);
+                            setShowMappingModal(false);
+                            setSelectedSqlColumn('');
+                            setSelectedFileColumn('');
+                        }
+                    }}
+                    className="confirm-btn"
+                    disabled={!selectedSqlColumn || !selectedFileColumn}
+                >
+                    Add Mapping
+                </button>
+            </div>
+        </div>
+    </div>
+)}
 
               {/* Additional Tables Mapping */}
               {additionalTables.map(addTable => (
@@ -898,7 +1173,7 @@ const processCustomMapping = (data, mapping) => {
     </button>
 </div>
       </form>
-
+      <MigrationProgress progress={migrationProgress} />
       {/* Status Messages */}
       {status && (
         <div className={`status-message ${status.includes('Error') ? 'error' :
