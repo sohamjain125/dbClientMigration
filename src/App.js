@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
+import Summary from './test';
+
+
 
 function App() {
   const [file, setFile] = useState(null);
@@ -21,6 +24,7 @@ function App() {
   const [selectedFileColumn, setSelectedFileColumn] = useState('');
   const [data, setData] = useState([]);
   const [additionalTableColumns, setAdditionalTableColumns] = useState({});
+  // const [migrationResults, setMigrationResults] = useState({});
   const [migrationProgress, setMigrationProgress] = useState({
     total: 0,
     processed: 0,
@@ -29,7 +33,73 @@ function App() {
     status: 'idle'
   });
 
+// Update the initial state to include all required fields
+const [migrationResults, setMigrationResults] = useState({
+  total: 0,
+  processed: 0,
+  skipped: 0,
+  failed: 0,
+  details: [],
+  status: 'idle'
+});
 
+// Update handleMigration function
+const handleMigration = async (e) => {
+  e.preventDefault();
+  try {
+    setMigrationResults({
+          total: 0,
+          processed: 0,
+          skipped: 0,
+          failed: 0,
+          status: 'in-progress'
+      });
+      setStatus('Migration in progress...');
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('tableName', tableName);
+      formData.append('mappings', JSON.stringify(mappings));
+      formData.append('customMappings', JSON.stringify(customMappings));
+      formData.append('additionalTables', JSON.stringify(additionalTables));
+      formData.append('additionalMappings', JSON.stringify(additionalMappings));
+
+      const response = await axios.post('http://localhost:5000/api/migrate', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+
+    console.log('API Response:', response.data);
+
+    if (response.data.success) {
+      setMigrationProgress({
+        total: response.data.totalRecords || 0,
+        processed: response.data.processedRecords || 0,
+        skipped: response.data.skippedRecords || 0,
+        failed: response.data.failedRecords || 0,
+        status: 'completed'
+      });
+      // Update migrationResults if available
+      if (response.data.results && response.data.results.details && response.data.results.details.length > 0) {
+          setMigrationResults(response.data.results);
+      }
+      setStatus('Migration completed successfully!');
+  }  else {
+        throw new Error(response.data.error || 'Migration failed');
+    }
+} catch (error) {
+    console.error('Migration Error:', error);
+    setStatus(`Error: ${error.message}`);
+}
+};
+// Add at the top of your App component
+useEffect(() => {
+  console.log('Migration results updated:', migrationResults);
+}, [migrationResults]);
+
+// Add in your render method before returning JSX
+console.log('Current migration results:', migrationResults);
 
 
   const [customMappings, setCustomMappings] = useState([]);
@@ -42,172 +112,221 @@ function App() {
     const [separator, setSeparator] = useState(' ');
     const [preview, setPreview] = useState('');
 
-    // Update the useEffect (around line 11 in your code)
+    // Improved useEffect with better preview logic
     useEffect(() => {
-      if (mappingType === 'concat' && sourceFields.length > 0) {
-        setPreview(true); // Just set to true since we're showing preview directly
-      } else if (mappingType === 'split' && sourceFields[0]) {
-        setPreview(true);
-      } else {
-        setPreview(false);
-      }
+        const hasValidSourceFields = mappingType === 'concat' ? 
+            sourceFields.length >= 2 : // Concat needs at least 2 fields
+            sourceFields.length === 1; // Split needs exactly 1 field
+
+        const hasValidDestination = mappingType === 'concat' ?
+            Boolean(destinationField) : // Concat needs one destination
+            Array.isArray(destinationField) && destinationField.length >= 2; // Split needs at least 2 destinations
+
+        setPreview(hasValidSourceFields && hasValidDestination);
     }, [mappingType, sourceFields, destinationField, separator]);
 
+    // Validation function
+    const isValidMapping = () => {
+        if (mappingType === 'concat') {
+            return sourceFields.length >= 2 && destinationField;
+        } else {
+            return sourceFields.length === 1 && 
+                   Array.isArray(destinationField) && 
+                   destinationField.length >= 2;
+        }
+    };
+
+    // Reset form when mapping type changes
+    useEffect(() => {
+        setSourceFields([]);
+        setDestinationField(mappingType === 'split' ? [] : '');
+        setSeparator(' ');
+    }, [mappingType]);
+
     return (
-      <div className="modal-overlay">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h3>Custom Column Mapping</h3>
-            <button onClick={onClose} className="close-button">
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <div className="modal-header">
+                    <h3>Custom Column Mapping</h3>
+                    <button 
+                        onClick={onClose} 
+                        className="close-button"
+                        aria-label="Close modal"
+                    >
+                        <i className="fas fa-times"></i>
+                    </button>
+                </div>
 
-          <div className="modal-body">
-            <div className="form-group">
-              <label>Mapping Type:</label>
-              <select
-                value={mappingType}
-                onChange={(e) => setMappingType(e.target.value)}
-                className="select-input"
-              >
-                <option value="concat">Combine Multiple Columns</option>
-                <option value="split">Split Single Column</option>
-              </select>
+                <div className="modal-body">
+                    <div className="form-group">
+                        <label htmlFor="mappingType">Mapping Type:</label>
+                        <select
+                            id="mappingType"
+                            value={mappingType}
+                            onChange={(e) => setMappingType(e.target.value)}
+                            className="select-input"
+                        >
+                            <option value="concat">Combine Multiple Columns</option>
+                            <option value="split">Split Single Column</option>
+                        </select>
+                    </div>
+
+                    {mappingType === 'concat' ? (
+                        <>
+                            <div className="form-group">
+                                <label htmlFor="sourceColumns">Source Columns to Combine:</label>
+                                <select
+                                    id="sourceColumns"
+                                    multiple
+                                    value={sourceFields}
+                                    onChange={(e) => setSourceFields(
+                                        Array.from(e.target.selectedOptions, option => option.value)
+                                    )}
+                                    className="select-input"
+                                >
+                                    {sourceColumns.map(col => (
+                                        <option key={col} value={col}>{col}</option>
+                                    ))}
+                                </select>
+                                <small>Select at least 2 columns (Hold Ctrl/Cmd)</small>
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="separator">Separator:</label>
+                                <input
+                                    id="separator"
+                                    type="text"
+                                    value={separator}
+                                    onChange={(e) => setSeparator(e.target.value)}
+                                    placeholder="Space, comma, etc."
+                                    className="text-input"
+                                    maxLength={5}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="destinationColumn">Destination Column:</label>
+                                <select
+                                    id="destinationColumn"
+                                    value={destinationField}
+                                    onChange={(e) => setDestinationField(e.target.value)}
+                                    className="select-input"
+                                >
+                                    <option value="">Select destination column</option>
+                                    {destinationColumns.map(col => (
+                                        <option key={col.name} value={col.name}>{col.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="form-group">
+                                <label htmlFor="sourceColumn">Source Column to Split:</label>
+                                <select
+                                    id="sourceColumn"
+                                    value={sourceFields[0] || ''}
+                                    onChange={(e) => setSourceFields([e.target.value])}
+                                    className="select-input"
+                                >
+                                    <option value="">Select source column</option>
+                                    {sourceColumns.map(col => (
+                                        <option key={col} value={col}>{col}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="splitSeparator">Separator:</label>
+                                <input
+                                    id="splitSeparator"
+                                    type="text"
+                                    value={separator}
+                                    onChange={(e) => setSeparator(e.target.value)}
+                                    placeholder="Space, comma, etc."
+                                    className="text-input"
+                                    maxLength={5}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="destinationColumns">Destination Columns:</label>
+                                <select
+                                    id="destinationColumns"
+                                    multiple
+                                    value={destinationField}
+                                    onChange={(e) => setDestinationField(
+                                        Array.from(e.target.selectedOptions, option => option.value)
+                                    )}
+                                    className="select-input"
+                                >
+                                    {destinationColumns.map(col => (
+                                        <option key={col.name} value={col.name}>{col.name}</option>
+                                    ))}
+                                </select>
+                                <small>Select at least 2 columns (Hold Ctrl/Cmd)</small>
+                            </div>
+                        </>
+                    )}
+
+                    {preview && (
+                        <div className="preview-section" role="region" aria-label="Mapping preview">
+                            <label>Preview:</label>
+                            <div className="preview-content">
+                                {mappingType === 'concat' ? (
+                                    <p>
+                                        <strong>Source:</strong> {sourceFields.join(` ${separator} `)}
+                                        <br />
+                                        <strong>Destination:</strong> {destinationField}
+                                    </p>
+                                ) : (
+                                    <p>
+                                        <strong>Source:</strong> {sourceFields[0]}
+                                        <br />
+                                        <strong>Will split into:</strong> {
+                                            Array.isArray(destinationField) 
+                                                ? destinationField.join(', ') 
+                                                : 'No columns selected'
+                                        }
+                                        <br />
+                                        <strong>Using separator:</strong> "{separator}"
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="modal-footer">
+                    <button
+                        onClick={onClose}
+                        className="button secondary"
+                        type="button"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => onSave({
+                            type: mappingType,
+                            sourceFields,
+                            destinationField,
+                            separator
+                        })}
+                        className="button primary"
+                        disabled={!isValidMapping()}
+                        type="button"
+                    >
+                        Create Mapping
+                    </button>
+                </div>
             </div>
-
-            {mappingType === 'concat' ? (
-              <>
-                <div className="form-group">
-                  <label>Source Columns to Combine:</label>
-                  <select
-                    multiple
-                    value={sourceFields}
-                    onChange={(e) => setSourceFields(
-                      Array.from(e.target.selectedOptions, option => option.value)
-                    )}
-                    className="select-input"
-                  >
-                    {sourceColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
-                  <small>Hold Ctrl/Cmd to select multiple columns</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Separator:</label>
-                  <input
-                    type="text"
-                    value={separator}
-                    onChange={(e) => setSeparator(e.target.value)}
-                    placeholder="Space, comma, etc."
-                    className="text-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Destination Column:</label>
-                  <select
-                    value={destinationField}
-                    onChange={(e) => setDestinationField(e.target.value)}
-                    className="select-input"
-                  >
-                    <option value="">Select destination column</option>
-                    {destinationColumns.map(col => (
-                      <option key={col.name} value={col.name}>{col.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="form-group">
-                  <label>Source Column to Split:</label>
-                  <select
-                    value={sourceFields[0] || ''}
-                    onChange={(e) => setSourceFields([e.target.value])}
-                    className="select-input"
-                  >
-                    <option value="">Select source column</option>
-                    {sourceColumns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Separator:</label>
-                  <input
-                    type="text"
-                    value={separator}
-                    onChange={(e) => setSeparator(e.target.value)}
-                    placeholder="Space, comma, etc."
-                    className="text-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Destination Columns:</label>
-                  <select
-                    multiple
-                    value={destinationField}
-                    onChange={(e) => setDestinationField(
-                      Array.from(e.target.selectedOptions, option => option.value)
-                    )}
-                    className="select-input"
-                  >
-                    {destinationColumns.map(col => (
-                      <option key={col.name} value={col.name}>{col.name}</option>
-                    ))}
-                  </select>
-                  <small>Hold Ctrl/Cmd to select multiple columns</small>
-                </div>
-              </>
-            )}
-
-// Replace the existing preview section (around line 133 in your code)
-            {preview && (
-              <div className="preview-section">
-                <label>Preview:</label>
-                <div className="preview-content">
-                  {mappingType === 'concat' && sourceFields.length > 0 && (
-                    <p>Example: "{sourceFields.join(` ${separator} `)}" → "{destinationField}"</p>
-                  )}
-                  {mappingType === 'split' && sourceFields[0] && (
-                    <p>Example: "{sourceFields[0]}" will be split into {
-                      Array.isArray(destinationField) ? destinationField.length : 1
-                    } columns using "{separator}" as separator</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="modal-footer">
-            <button
-              onClick={onClose}
-              className="button secondary"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => onSave({
-                type: mappingType,
-                sourceFields,
-                destinationField,
-                separator
-              })}
-              className="button primary"
-              disabled={!sourceFields.length || !destinationField}
-            >
-              Create Mapping
-            </button>
-          </div>
         </div>
-      </div>
     );
-  };
+};
+
+
+
+
   const MigrationProgress = ({ progress }) => {
     const getStatusColor = () => {
       switch (progress.status) {
@@ -297,36 +416,36 @@ function App() {
 
 
 
-// Update your fetchTableColumns function
-const fetchTableColumns = async (selectedTable) => {
-  try {
+  // Update your fetchTableColumns function
+  const fetchTableColumns = async (selectedTable) => {
+    try {
       console.log('Fetching columns for:', selectedTable);
       const response = await axios.get(`http://localhost:5000/api/columns/${selectedTable}`);
       console.log('API Response:', response.data);
 
       if (response.data.success) {
-          setTableColumns(response.data.columns);
-          if (response.data.metadata) {
-              console.log('Setting metadata:', response.data.metadata);
-              setColumnMetadata(response.data.metadata);
-          }
+        setTableColumns(response.data.columns);
+        if (response.data.metadata) {
+          console.log('Setting metadata:', response.data.metadata);
+          setColumnMetadata(response.data.metadata);
+        }
       }
-  } catch (error) {
+    } catch (error) {
       console.error('Error fetching columns:', error);
       setStatus(`Error fetching columns: ${error.message}`);
-  }
-};
+    }
+  };
 
-// Add this useEffect to monitor changes
-useEffect(() => {
-  if (tableName) {
+  // Add this useEffect to monitor changes
+  useEffect(() => {
+    if (tableName) {
       fetchTableColumns(tableName);
-  }
-}, [tableName]);
+    }
+  }, [tableName]);
 
-useEffect(() => {
-  console.log('Updated columnMetadata:', columnMetadata);
-}, [columnMetadata]);
+  useEffect(() => {
+    console.log('Updated columnMetadata:', columnMetadata);
+  }, [columnMetadata]);
   const fetchReferenceData = async (tableName) => {
     try {
       const response = await axios.get(`http://localhost:5000/api/reference/${tableName}`);
@@ -754,7 +873,7 @@ useEffect(() => {
         <p className="subtitle">Import and map your data across multiple tables</p>
       </header>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleMigration}>
         <div className="migration-setup">
           {/* Step 1: Table Selection */}
           <div className="step-section">
@@ -979,64 +1098,64 @@ useEffect(() => {
 
               {/* Primary Table Mapping */}
               {tableColumns.length > 0 && (
-    <div className="mapping-section">
-      {console.log('Current columnMetadata:', columnMetadata)} {/* Debug log */}
-        <h3>
-            <i className="fas fa-random"></i>
-            Primary Table Mapping ({tableName})
-        </h3>
-        <div className="auto-map-info">
-            <i className="fas fa-magic"></i>
-            Auto-mapped columns are automatically matched based on names
-        </div>
-        <div className="mappings">
-            {Object.entries(mappings).map(([sqlCol, fileCol]) => {
-               const columnMeta = columnMetadata[sqlCol];
-               console.log('Column metadata for', sqlCol, ':', columnMeta);
-        
-               return (
-                <div key={sqlCol} className="mapping-item">
-                    <div className={`mapping-content ${columnMeta?.isForeignKey ? 'foreign-key' : ''}`}>
-                        <span className="source-col">{fileCol}</span>
-                        <i className="fas fa-arrow-right"></i>
-                        <span className="target-col">
-                            {sqlCol}
-                            {columnMeta?.isForeignKey && (
+                <div className="mapping-section">
+                  {console.log('Current columnMetadata:', columnMetadata)} {/* Debug log */}
+                  <h3>
+                    <i className="fas fa-random"></i>
+                    Primary Table Mapping ({tableName})
+                  </h3>
+                  <div className="auto-map-info">
+                    <i className="fas fa-magic"></i>
+                    Auto-mapped columns are automatically matched based on names
+                  </div>
+                  <div className="mappings">
+                    {Object.entries(mappings).map(([sqlCol, fileCol]) => {
+                      const columnMeta = columnMetadata[sqlCol];
+                      console.log('Column metadata for', sqlCol, ':', columnMeta);
+
+                      return (
+                        <div key={sqlCol} className="mapping-item">
+                          <div className={`mapping-content ${columnMeta?.isForeignKey ? 'foreign-key' : ''}`}>
+                            <span className="source-col">{fileCol}</span>
+                            <i className="fas fa-arrow-right"></i>
+                            <span className="target-col">
+                              {sqlCol}
+                              {columnMeta?.isForeignKey && (
                                 <div className="foreign-key-badge">
-                                    FK → {columnMeta.referencedTable}
+                                  FK → {columnMeta.referencedTable}
                                 </div>
-                            )}
-                        </span>
-                    </div>
-                    <div className="mapping-actions">
-                        <button
-                            type="button"
-                            onClick={() => handleUpdateMapping(sqlCol)}
-                            className="action-button edit"
-                        >
-                            <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleDeleteMapping(sqlCol)}
-                            className="action-button delete"
-                        >
-                            <i className="fas fa-trash"></i>
-                        </button>
-                    </div>
+                              )}
+                            </span>
+                          </div>
+                          <div className="mapping-actions">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateMapping(sqlCol)}
+                              className="action-button edit"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMapping(sqlCol)}
+                              className="action-button delete"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setShowMappingModal(true)}
+                      className="add-mapping-btn"
+                    >
+                      <i className="fas fa-plus"></i> Add Column Mapping
+                    </button>
+                  </div>
                 </div>
-            );
-            })}
-            <button
-                type="button"
-                onClick={() => setShowMappingModal(true)}
-                className="add-mapping-btn"
-            >
-                <i className="fas fa-plus"></i> Add Column Mapping
-            </button>
-        </div>
-    </div>
-)}
+              )}
 
               {/* Mapping Modal */}
               {showMappingModal && (
@@ -1187,16 +1306,23 @@ useEffect(() => {
           </button>
         </div>
       </form>
-      <MigrationProgress progress={migrationProgress} />
-      {/* Status Messages */}
-      {status && (
-        <div className={`status-message ${status.includes('Error') ? 'error' :
-          status.includes('⚠️') ? 'warning' : 'success'}`}>
-          <i className={`fas ${status.includes('Error') ? 'fa-exclamation-circle' :
-            status.includes('⚠️') ? 'fa-exclamation-triangle' : 'fa-check-circle'}`}></i>
-          {status}
-        </div>
-      )}
+
+     
+
+        {/* Only show Summary when we have actual results */}
+        {migrationResults && 
+         migrationResults.details && 
+         migrationResults.details.length > 0 && (
+            <Summary results={migrationResults} />
+        )}
+
+        {/* Status message */}
+        {status && (
+            <div className={`status-message ${status.includes('Error') ? 'error' : 'success'}`}>
+                {status}
+            </div>
+        )}
+      
     </div>
   );
 }
