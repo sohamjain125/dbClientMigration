@@ -1058,3 +1058,142 @@ html {
   font-style: italic;
   margin-top: 2px;
 }
+
+.step-section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.file-info {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 10px;
+}
+
+.file-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.file-details i {
+  color: #28a745;
+}
+
+.file-details small {
+  color: #6c757d;
+}
+
+.csv-preview {
+  border-top: 1px solid #dee2e6;
+  padding-top: 15px;
+}
+
+.column-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.column-chip {
+  background: #e9ecef;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.9em;
+  color: #495057;
+}
+
+
+.foreign-key {
+  background-color: #f0f7ff;
+  border-left: 3px solid #0066cc;
+}
+
+.foreign-key-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: #0066cc;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.mapping-content {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.foreign-key {
+  background-color: #f0f7ff;
+  border-left: 3px solid #0066cc;
+}
+
+.foreign-key-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: #0066cc;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.mapping-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.target-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapping-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  margin-bottom: 8px;
+}
+
+.foreign-key {
+  background-color: #f0f7ff !important;
+  border-left: 3px solid #0066cc !important;
+}
+
+.foreign-key-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background-color: #0066cc;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.target-col {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
